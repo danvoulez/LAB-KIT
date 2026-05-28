@@ -1,0 +1,6 @@
+foundation: LogLine Foundation
+relationship: loaded_by_reference
+rules:
+  - nine_slot_act_shape
+  - receipts_beat_stories
+  - semantic_writes_are_acts

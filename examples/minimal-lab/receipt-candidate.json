@@ -1,0 +1,22 @@
+{
+  "who": "receipt-reviewer",
+  "did": "prepare_receipt_candidate",
+  "this": {
+    "claim": "logline-lab doctor produced a filesystem and configuration check output.",
+    "scope_closed": "single command output was observed",
+    "scope_not_closed": ["database connectivity", "production readiness"],
+    "evidence_refs": ["artifact://local/doctor-output.txt"],
+    "ghosts_remaining": ["SUPABASE_DB_URL not configured in local test shell"]
+  },
+  "confirmed_by": {
+    "evidence_refs": ["artifact://local/doctor-output.txt"]
+  },
+  "if_ok": {"project": "receipts.candidates"},
+  "if_doubt": {"open_ghost": "receipt-scope-unclear"},
+  "if_not": {"reject": "broad_claim_from_narrow_evidence"},
+  "status": "candidate",
+  "runtime_envelope": {"runtime_id": "logline-lab-cli"},
+  "previous_act_refs": [],
+  "evidence_state": "observed",
+  "promotion_state": "candidate"
+}

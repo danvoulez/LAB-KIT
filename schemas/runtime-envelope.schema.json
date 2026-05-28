@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Runtime Envelope",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "runtime_id": {"type": "string", "minLength": 1},
+    "runtime_kind": {"type": "string"},
+    "tool": {"type": "string"},
+    "operator_session": {"type": "string"},
+    "source": {"type": "string"},
+    "dry_run": {"type": "boolean"}
+  }
+}

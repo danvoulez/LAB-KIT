@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Evidence Act",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "who",
+    "did",
+    "this",
+    "confirmed_by",
+    "if_ok",
+    "if_doubt",
+    "if_not",
+    "status"
+  ],
+  "properties": {
+    "who": {
+      "type": "string",
+      "minLength": 1
+    },
+    "did": {
+      "type": "string",
+      "minLength": 1
+    },
+    "this": {
+      "type": "object",
+      "anyOf": [
+        {
+          "required": [
+            "artifact_refs"
+          ]
+        },
+        {
+          "required": [
+            "stdout_ref"
+          ]
+        },
+        {
+          "required": [
+            "stderr_ref"
+          ]
+        },
+        {
+          "required": [
+            "observation"
+          ]
+        },
+        {
+          "required": [
+            "workorder_id"
+          ]
+        }
+      ]
+    },
+    "when": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "confirmed_by": {
+      "type": "object"
+    },
+    "if_ok": {
+      "type": "object"
+    },
+    "if_doubt": {
+      "type": "object"
+    },
+    "if_not": {
+      "type": "object"
+    },
+    "status": {
+      "type": "string",
+      "minLength": 1
+    },
+    "runtime_envelope": {
+      "type": "object"
+    },
+    "previous_act_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidence_state": {
+      "enum": [
+        "declared",
+        "observed",
+        "inconclusive",
+        "missing",
+        "rejected"
+      ]
+    },
+    "promotion_state": {
+      "enum": [
+        "candidate",
+        "projected",
+        "trusted",
+        "blocked",
+        "rejected"
+      ]
+    }
+  }
+}

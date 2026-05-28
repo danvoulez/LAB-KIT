@@ -1,0 +1,12 @@
+hook_id: before_receipt_review.require_evidence_refs.v1
+trigger: before_lane.receipt_review
+mandatory: true
+checks:
+  - evidence_refs_present
+  - claim_scope_present
+  - ghosts_remaining_named
+on_pass:
+  did: admit_receipt_review
+on_fail:
+  did: open_ghost
+  ghost_key: receipt-review-evidence-missing
