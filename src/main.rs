@@ -8,7 +8,7 @@ use axum::{
 use chrono::{DateTime, Utc};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{json, Map, Value};
 use sha2::{Digest, Sha256};
 use std::{
     fs,
@@ -398,7 +398,10 @@ async fn emit_from_file(database_url: Option<&str>, path: &Path) -> Result<()> {
 }
 
 async fn receipt_prepare(database_url: Option<&str>, path: &Path) -> Result<()> {
-    let act = read_act(path)?;
+    let raw = read_json_or_yaml(path)?;
+    validate_json_schema(Path::new("schemas/receipt-candidate.schema.json"), &raw)
+        .context("receipt candidate schema validation failed")?;
+    let act: LogLineAct = serde_json::from_value(raw)?;
     let refs = act
         .this_
         .get("evidence_refs")
@@ -482,16 +485,85 @@ fn hook_run(hook: &str, payload: Option<&Path>) -> Result<()> {
     }
     let content = fs::read_to_string(&path)?;
     let parsed: Value = serde_yaml::from_str(&content)?;
-    if let Some(payload) = payload {
-        let _: Value = read_json_or_yaml(payload)?;
+    let payload_value = if let Some(payload) = payload {
+        Some(read_json_or_yaml(payload)?)
+    } else {
+        None
+    };
+    let result = evaluate_hook(&parsed, payload_value.as_ref())?;
+    let blocked = result.get("status").and_then(Value::as_str) == Some("blocked");
+    println!("{}", serde_json::to_string_pretty(&result)?);
+    if blocked {
+        bail!("mandatory hook blocked");
     }
-    println!(
-        "{}",
-        serde_json::to_string_pretty(
-            &json!({"hook":hook,"mandatory":parsed.get("mandatory"),"status":"parsed"})
-        )?
-    );
     Ok(())
+}
+
+fn evaluate_hook(hook: &Value, payload: Option<&Value>) -> Result<Value> {
+    let checks = hook
+        .get("checks")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let mut results = Vec::new();
+    let mut passed = true;
+    for check in checks {
+        let Some(check_name) = check.as_str() else {
+            continue;
+        };
+        let ok = match check_name {
+            "evidence_refs_present" => payload
+                .and_then(|value| {
+                    value
+                        .pointer("/this/evidence_refs")
+                        .or_else(|| value.get("evidence_refs"))
+                })
+                .and_then(Value::as_array)
+                .map(|refs| !refs.is_empty())
+                .unwrap_or(false),
+            "claim_scope_present" => payload
+                .and_then(|value| {
+                    value
+                        .pointer("/this/scope_closed")
+                        .or_else(|| value.get("scope_closed"))
+                })
+                .and_then(Value::as_str)
+                .map(|scope| !scope.trim().is_empty())
+                .unwrap_or(false),
+            "ghosts_remaining_named" => payload
+                .and_then(|value| {
+                    value
+                        .pointer("/this/ghosts_remaining")
+                        .or_else(|| value.get("ghosts_remaining"))
+                })
+                .is_some(),
+            "claim_refs_present" => payload
+                .and_then(|value| value.get("claim_refs"))
+                .and_then(Value::as_array)
+                .map(|refs| !refs.is_empty())
+                .unwrap_or(false),
+            "receipt_refs_present" => payload
+                .and_then(|value| value.get("receipt_refs"))
+                .and_then(Value::as_array)
+                .map(|refs| !refs.is_empty())
+                .unwrap_or(false),
+            "verification_plan_present" => payload
+                .and_then(|value| value.get("verification_plan"))
+                .is_some(),
+            _ => bail!("unknown hook check: {check_name}"),
+        };
+        if !ok {
+            passed = false;
+        }
+        results.push(json!({"check": check_name, "ok": ok}));
+    }
+    Ok(json!({
+        "hook": hook.get("hook_id"),
+        "mandatory": hook.get("mandatory"),
+        "status": if passed { "passed" } else { "blocked" },
+        "checks": results,
+        "next": if passed { hook.get("on_pass") } else { hook.get("on_fail") }
+    }))
 }
 
 async fn clock_tick(database_url: Option<&str>, kind: &str) -> Result<()> {
@@ -644,9 +716,11 @@ async fn db_list(state: &AppState, relation: &str) -> (StatusCode, Json<Value>) 
 }
 
 fn read_manifest(path: &Path) -> Result<LabManifest> {
-    let s =
-        fs::read_to_string(path).with_context(|| format!("read manifest {}", path.display()))?;
-    Ok(serde_yaml::from_str(&s)?)
+    let value =
+        read_json_or_yaml(path).with_context(|| format!("read manifest {}", path.display()))?;
+    validate_json_schema(Path::new("schemas/lab-manifest.schema.json"), &value)
+        .context("manifest schema validation failed")?;
+    Ok(serde_json::from_value(value)?)
 }
 fn ensure_spine(m: &LabManifest) -> Result<()> {
     if m.semantic_write_spine != "ops.logline_acts" {
@@ -656,6 +730,8 @@ fn ensure_spine(m: &LabManifest) -> Result<()> {
 }
 fn read_act(path: &Path) -> Result<LogLineAct> {
     let value = read_json_or_yaml(path)?;
+    validate_json_schema(Path::new("schemas/logline-act.schema.json"), &value)
+        .context("LogLine Act schema validation failed")?;
     Ok(serde_json::from_value(value)?)
 }
 fn read_json_or_yaml(path: &Path) -> Result<Value> {
@@ -727,15 +803,59 @@ async fn connect(url: &str) -> Result<Client> {
     Ok(client)
 }
 async fn run_migrations(client: &Client) -> Result<()> {
+    client
+        .batch_execute(
+            "create schema if not exists ops;
+             create table if not exists ops.schema_migrations (
+               version text primary key,
+               checksum text not null,
+               applied_at timestamptz not null default now()
+             );",
+        )
+        .await?;
+
+    let mut migrations = Vec::new();
     for entry in fs::read_dir("supabase/migrations")? {
         let path = entry?.path();
         if path.extension().and_then(|s| s.to_str()) == Some("sql") {
-            let sql = fs::read_to_string(&path)?;
-            client
-                .batch_execute(&sql)
-                .await
-                .with_context(|| format!("migration {}", path.display()))?;
+            migrations.push(path);
         }
+    }
+    migrations.sort();
+
+    for path in migrations {
+        let version = path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .ok_or_else(|| anyhow!("invalid migration filename: {}", path.display()))?
+            .to_owned();
+        let sql = fs::read_to_string(&path)?;
+        let checksum = hash_bytes(sql.as_bytes());
+        if let Some(row) = client
+            .query_opt(
+                "select checksum from ops.schema_migrations where version = $1",
+                &[&version],
+            )
+            .await?
+        {
+            let applied_checksum: String = row.get(0);
+            if applied_checksum != checksum {
+                bail!(
+                    "migration checksum mismatch for {version}: db has {applied_checksum}, file has {checksum}"
+                );
+            }
+            continue;
+        }
+        client
+            .batch_execute(&sql)
+            .await
+            .with_context(|| format!("migration {}", path.display()))?;
+        client
+            .execute(
+                "insert into ops.schema_migrations (version, checksum) values ($1, $2)",
+                &[&version, &checksum],
+            )
+            .await?;
     }
     Ok(())
 }
@@ -770,10 +890,45 @@ async fn insert_act(client: &Client, act: &LogLineAct) -> Result<Uuid> {
     Ok(row.get(0))
 }
 fn hash_value(value: &Value) -> String {
-    let bytes = serde_json::to_vec(value).expect("json serialization");
+    let canonical = canonicalize_value(value);
+    let bytes = serde_json::to_vec(&canonical).expect("json serialization");
+    hash_bytes(&bytes)
+}
+
+fn hash_bytes(bytes: &[u8]) -> String {
     let mut hasher = Sha256::new();
     hasher.update(bytes);
     format!("sha256:{}", hex::encode(hasher.finalize()))
+}
+
+fn canonicalize_value(value: &Value) -> Value {
+    match value {
+        Value::Array(items) => Value::Array(items.iter().map(canonicalize_value).collect()),
+        Value::Object(object) => {
+            let mut keys: Vec<_> = object.keys().collect();
+            keys.sort();
+            let mut sorted = Map::new();
+            for key in keys {
+                sorted.insert(key.clone(), canonicalize_value(&object[key]));
+            }
+            Value::Object(sorted)
+        }
+        other => other.clone(),
+    }
+}
+
+fn validate_json_schema(schema_path: &Path, instance: &Value) -> Result<()> {
+    let schema_text = fs::read_to_string(schema_path)
+        .with_context(|| format!("read schema {}", schema_path.display()))?;
+    let schema: Value = serde_json::from_str(&schema_text)
+        .with_context(|| format!("parse schema {}", schema_path.display()))?;
+    let compiled = jsonschema::JSONSchema::compile(&schema)
+        .map_err(|err| anyhow!("compile schema {}: {err}", schema_path.display()))?;
+    if let Err(errors) = compiled.validate(instance) {
+        let messages: Vec<String> = errors.map(|err| err.to_string()).collect();
+        bail!("{}", messages.join("; "));
+    }
+    Ok(())
 }
 async fn relation_exists(client: &Client, relation: &str) -> Result<bool> {
     let parts: Vec<_> = relation.split('.').collect();
@@ -840,5 +995,21 @@ mod tests {
     #[test]
     fn hashes_are_prefixed_sha256() {
         assert!(hash_value(&json!({"a":1})).starts_with("sha256:"));
+    }
+
+    #[test]
+    fn canonical_hash_ignores_object_key_order() {
+        assert_eq!(
+            hash_value(&json!({"a":1,"b":2})),
+            hash_value(&json!({"b":2,"a":1}))
+        );
+    }
+
+    #[test]
+    fn logline_act_schema_rejects_missing_slots() {
+        let invalid = json!({"who":"x","did":"y"});
+        assert!(
+            validate_json_schema(Path::new("schemas/logline-act.schema.json"), &invalid).is_err()
+        );
     }
 }

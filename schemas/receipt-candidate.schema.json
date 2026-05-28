@@ -1,1 +1,112 @@
-{"":"https://json-schema.org/draft/2020-12/schema","title":"receipt-candidate","type":"object"}
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Receipt Candidate Act",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "who",
+    "did",
+    "this",
+    "confirmed_by",
+    "if_ok",
+    "if_doubt",
+    "if_not",
+    "status"
+  ],
+  "properties": {
+    "who": {
+      "type": "string",
+      "minLength": 1
+    },
+    "did": {
+      "const": "prepare_receipt_candidate"
+    },
+    "this": {
+      "type": "object",
+      "required": [
+        "claim",
+        "scope_closed",
+        "scope_not_closed",
+        "evidence_refs",
+        "ghosts_remaining"
+      ],
+      "properties": {
+        "claim": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scope_closed": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scope_not_closed": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "ghosts_remaining": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "when": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "confirmed_by": {
+      "type": "object"
+    },
+    "if_ok": {
+      "type": "object"
+    },
+    "if_doubt": {
+      "type": "object"
+    },
+    "if_not": {
+      "type": "object"
+    },
+    "status": {
+      "const": "candidate"
+    },
+    "runtime_envelope": {
+      "type": "object"
+    },
+    "previous_act_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidence_state": {
+      "enum": [
+        "declared",
+        "observed",
+        "inconclusive",
+        "missing",
+        "rejected"
+      ]
+    },
+    "promotion_state": {
+      "enum": [
+        "candidate",
+        "projected",
+        "trusted",
+        "blocked",
+        "rejected"
+      ]
+    }
+  }
+}

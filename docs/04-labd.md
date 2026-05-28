@@ -1,5 +1,11 @@
-# 04-labd
+# labd
 
-This document is part of the Rust-native LogLine Lab Kit v0.
+`labd` is the optional HTTP daemon for local or server-side operation.
 
-Core law: semantic writes go to `ops.logline_acts`; all registries, audit views, evidence indexes, receipt indexes, observability surfaces, and workorders are projections or prepared boundaries.
+It exposes the same boundary as the CLI:
+
+- read endpoints for status, daily state, ghosts, evidence, receipts, canon, and runtimes;
+- write endpoints that accept LogLine Acts and insert only into `ops.logline_acts`;
+- utility endpoints for projectors, clock ticks, dispatch packets, and workorder preparation.
+
+`labd` is not an authority bypass. Protected action still requires an admitted dispatch packet, an authority decision, an execution window, and evidence return.
