@@ -1,0 +1,5 @@
+clock_id: default.lab-clock
+schedules:
+  - kind: daily
+    at: '09:00'
+    checks: [open_ghosts, receipt_candidates, runtimes, evidence, hooks]

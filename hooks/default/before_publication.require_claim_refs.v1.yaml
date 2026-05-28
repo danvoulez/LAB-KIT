@@ -1,0 +1,11 @@
+hook_id: before_publication.require_claim_refs.v1
+trigger: before_publication
+mandatory: true
+checks:
+  - claim_refs_present
+  - receipt_refs_present
+on_pass:
+  did: admit_publication_review
+on_fail:
+  did: open_ghost
+  ghost_key: publication-claims-unreceipted

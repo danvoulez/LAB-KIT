@@ -1,0 +1,10 @@
+hook_id: after_operator_edit.run_verification_plan.v1
+trigger: after_operator_edit
+mandatory: true
+checks:
+  - verification_plan_present
+on_pass:
+  did: admit_verification
+on_fail:
+  did: open_ghost
+  ghost_key: verification-plan-missing

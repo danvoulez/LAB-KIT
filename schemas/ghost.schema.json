@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ghost Act",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "who",
+    "did",
+    "this",
+    "confirmed_by",
+    "if_ok",
+    "if_doubt",
+    "if_not",
+    "status"
+  ],
+  "properties": {
+    "who": {
+      "type": "string",
+      "minLength": 1
+    },
+    "did": {
+      "const": "open_ghost"
+    },
+    "this": {
+      "type": "object",
+      "required": [
+        "ghost_key",
+        "what_missing"
+      ],
+      "properties": {
+        "ghost_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "what_missing": {
+          "type": "string",
+          "minLength": 1
+        },
+        "why_it_matters": {
+          "type": "string"
+        },
+        "next_act": {
+          "type": "string"
+        }
+      }
+    },
+    "when": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "confirmed_by": {
+      "type": "object"
+    },
+    "if_ok": {
+      "type": "object"
+    },
+    "if_doubt": {
+      "type": "object"
+    },
+    "if_not": {
+      "type": "object"
+    },
+    "status": {
+      "enum": [
+        "open",
+        "declared"
+      ]
+    },
+    "runtime_envelope": {
+      "type": "object"
+    },
+    "previous_act_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidence_state": {
+      "enum": [
+        "declared",
+        "observed",
+        "inconclusive",
+        "missing",
+        "rejected"
+      ]
+    },
+    "promotion_state": {
+      "enum": [
+        "candidate",
+        "projected",
+        "trusted",
+        "blocked",
+        "rejected"
+      ]
+    }
+  }
+}
