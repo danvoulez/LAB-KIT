@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LogLine Act",
+  "type": "object",
+  "required": ["who", "did", "this", "confirmed_by", "if_ok", "if_doubt", "if_not", "status"],
+  "properties": {
+    "who": {"type": "string", "minLength": 1},
+    "did": {"type": "string", "minLength": 1},
+    "this": {"type": "object"},
+    "when": {"type": "string", "format": "date-time"},
+    "confirmed_by": {"type": "object"},
+    "if_ok": {"type": "object"},
+    "if_doubt": {"type": "object"},
+    "if_not": {"type": "object"},
+    "status": {"type": "string", "minLength": 1},
+    "runtime_envelope": {"type": "object"},
+    "previous_act_refs": {"type": "array", "items": {"type": "string"}},
+    "evidence_state": {"type": "string"},
+    "promotion_state": {"type": "string"}
+  }
+}

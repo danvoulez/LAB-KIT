@@ -1,0 +1,15 @@
+lab_id: example-lab
+profile: logline-lab.practice.v0
+semantic_write_spine: ops.logline_acts
+projection_surface: supabase
+canon_refs:
+  - canon/foundation.refs.yaml
+  - canon/conformance.refs.yaml
+hooks:
+  - hooks/default/before_receipt_review.require_evidence_refs.v1.yaml
+benches:
+  - dialogue-observatory
+  - interval-workbench
+  - runtime-observatory
+  - projector-lab
+  - promotion-control

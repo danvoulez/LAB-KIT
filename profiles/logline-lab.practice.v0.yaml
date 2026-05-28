@@ -1,0 +1,5 @@
+profile_id: logline-lab.practice.v0
+spine: ops.logline_acts
+projection_surface: supabase
+semantic_unit: LogLine Act
+frontend_required: false

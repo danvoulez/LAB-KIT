@@ -1,0 +1,21 @@
+lab_id: santo-andre-laboratory
+profile: santo-andre.practice.v0
+semantic_write_spine: ops.logline_acts
+projection_surface: supabase
+canon_refs:
+  - canon/foundation.refs.yaml
+  - canon/conformance.refs.yaml
+hooks:
+  - hooks/default/after_operator_edit.run_verification_plan.v1.yaml
+  - hooks/default/before_receipt_review.require_evidence_refs.v1.yaml
+  - hooks/default/before_publication.require_claim_refs.v1.yaml
+benches:
+  - dialogue-observatory
+  - interval-workbench
+  - runtime-observatory
+  - projector-lab
+  - composition-lab
+  - contract-bench
+  - ghost-review
+  - receipt-bench
+  - promotion-control
